@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama Assistant</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/model-guide.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Ollama Assistant</h1>
+            <div class="model-selection">
+                <label for="model-select">Select Model:</label>
+                <select id="model-select"></select>
+                <div id="model-info" class="model-info"></div>
+            </div>
+            
+            <!-- Dark mode toggle -->
+            <div class="dark-mode-toggle">
+                <input type="checkbox" id="dark-mode-checkbox">
+                <label for="dark-mode-checkbox">Toggle Dark Mode</label>
+            </div>
+        </header>
+
+        <main>
+            <div id="messages" class="messages"></div>
+
+            <form id="chat-form" class="chat-form">
+                <textarea id="user-input" placeholder="Ask a question..."></textarea>
+                <button type="submit">Send</button>
+            </form>
+
+            <div class="controls">
+                <button id="parameters-toggle">Parameters</button>
+                <button id="model-guide-toggle">Model Guide</button>
+                <button id="clear-conversation">Clear Chat</button>
+                <button id="stop-generation" style="display: none;">Stop Generation</button>
+            </div>
+
+            <div id="parameters-panel" class="parameters hidden">
+                <h3>Parameters</h3>
+                <div class="parameter">
+                    <label for="temperature">Temperature:</label>
+                    <input type="number" id="temperature" min="0" max="2" step="0.1" value="0.7">
+                </div>
+                <div class="parameter">
+                    <label for="top-p">Top P:</label>
+                    <input type="number" id="top-p" min="0" max="1" step="0.05" value="0.9">
+                </div>
+                <div class="parameter">
+                    <label for="max-tokens">Max Tokens:</label>
+                    <input type="number" id="max-tokens" min="1" max="10000" value="">
+                </div>
+                <div class="parameter">
+                    <label for="stop-sequences">Stop Sequences:</label>
+                    <input type="text" id="stop-sequences" placeholder="Comma-separated">
+                </div>
+            </div>
+            
+            <div id="model-guide-panel" class="model-guide hidden">
+                <h3>Model Guide</h3>
+                <div class="guide-content">
+                    <div class="model-card">
+                        <h4>Phi3:mini (2.2 GB)</h4>
+                        <p><strong>Best for:</strong> Quick questions, simple explanations</p>
+                        <p><strong>Sample prompts:</strong></p>
+                        <ul>
+                            <li>"Explain what a buffer overflow is"</li>
+                            <li>"What's the syntax for Python list comprehension?"</li>
+                            <li>"Give me a quick summary of CSRF attacks"</li>
+                        </ul>
+                        <span class="size-tag">2.2 GB</span>
+                    </div>
+                    
+                    <div class="model-card">
+                        <h4>Stable-Code:3b</h4>
+                        <p><strong>Best for:</strong> Fast, simple code generation</p>
+                        <p><strong>Sample prompts:</strong></p>
+                        <ul>
+                            <li>"Write a Python function to check if a string is a palindrome"</li>
+                            <li>"Create a simple Flask route to handle file uploads"</li>
+                            <li>"Fix this code: [paste buggy code]"</li>
+                        </ul>
+                        <span class="size-tag">1.6 GB</span>
+                    </div>
+                    
+                    <div class="model-card">
+                        <h4>DeepSeek-Coder:6.7b</h4>
+                        <p><strong>Best for:</strong> Medium complexity Python tasks</p>
+                        <p><strong>Sample prompts:</strong></p>
+                        <ul>
+                            <li>"Create a Python script to scrape a website and save the data to CSV"</li>
+                            <li>"Write a class for handling secure API connections with error handling"</li>
+                            <li>"Implement a simple port scanner in Python"</li>
+                        </ul>
+                        <span class="size-tag">3.8 GB</span>
+                    </div>
+                    
+                    <div class="model-card">
+                        <h4>Llama3:8b</h4>
+                        <p><strong>Best for:</strong> General-purpose tasks, everyday use</p>
+                        <p><strong>Sample prompts:</strong></p>
+                        <ul>
+                            <li>"Summarize this cybersecurity article: [paste article]"</li>
+                            <li>"Help me plan my security training curriculum"</li>
+                            <li>"Explain OAuth 2.0 authorization flows"</li>
+                        </ul>
+                        <span class="size-tag">4.7 GB</span>
+                    </div>
+                    
+                    <div class="model-card">
+                        <h4>Dolphin-Mistral:7b</h4>
+                        <p><strong>Best for:</strong> Focused cybersecurity tasks</p>
+                        <p><strong>Sample prompts:</strong></p>
+                        <ul>
+                            <li>"How do I secure a Django application against the OWASP Top 10?"</li>
+                            <li>"Analyze this network traffic log for suspicious activity"</li>
+                            <li>"Help me understand the implications of this CVE"</li>
+                        </ul>
+                        <span class="size-tag">4.1 GB</span>
+                    </div>
+                    
+                    <div class="model-card">
+                        <h4>Mixtral:8x7b</h4>
+                        <p><strong>Best for:</strong> Complex reasoning tasks</p>
+                        <p><strong>Sample prompts:</strong></p>
+                        <ul>
+                            <li>"Design a secure architecture for a financial application"</li>
+                            <li>"Analyze the security implications of this container setup"</li>
+                            <li>"Help me understand the mathematical principles behind this encryption algorithm"</li>
+                        </ul>
+                        <span class="size-tag">26 GB</span>
+                    </div>
+                    
+                    <div class="model-card">
+                        <h4>Nous-Hermes2:34b</h4>
+                        <p><strong>Best for:</strong> Advanced security reasoning and analysis</p>
+                        <p><strong>Sample prompts:</strong></p>
+                        <ul>
+                            <li>"Develop a threat model for a cloud-native application"</li>
+                            <li>"Analyze this malware behavior and suggest countermeasures"</li>
+                            <li>"Create a security incident response playbook for ransomware"</li>
+                        </ul>
+                        <span class="size-tag">19 GB</span>
+                    </div>
+                    
+                    <div class="model-card">
+                        <h4>CodeLlama:70b-instruct</h4>
+                        <p><strong>Best for:</strong> Complex programming tasks</p>
+                        <p><strong>Sample prompts:</strong></p>
+                        <ul>
+                            <li>"Create a secure authentication system using Django and OAuth"</li>
+                            <li>"Help me refactor this complex Python codebase for better security"</li>
+                            <li>"Design a Python program to detect anomalies in system logs using ML"</li>
+                        </ul>
+                        <span class="size-tag">38 GB</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/models.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/models-guide.js"></script>
+    <script src="js/file-manager.js"></script>
+</body>
+</html>

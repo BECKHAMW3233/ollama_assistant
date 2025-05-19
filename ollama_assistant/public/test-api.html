@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        button { padding: 10px; margin: 5px; }
+        pre { background: #f0f0f0; padding: 15px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Ollama API Test</h1>
+    
+    <div>
+        <button id="test-direct">Test Direct API (/api/tags)</button>
+        <button id="test-debug">Test Debug Route (/test-api)</button>
+        <button id="test-curl">Test Curl Command</button>
+    </div>
+    
+    <h3>Result:</h3>
+    <pre id="result">Click a button to test the API</pre>
+    
+    <script>
+        document.getElementById('test-direct').addEventListener('click', async () => {
+            const result = document.getElementById('result');
+            result.textContent = 'Testing direct API connection...';
+            
+            try {
+                const response = await fetch('/api/tags');
+                if (!response.ok) {
+                    throw new Error(`API returned status ${response.status} ${response.statusText}`);
+                }
+                const data = await response.json();
+                result.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                result.textContent = `Error: ${error.message}`;
+            }
+        });
+        
+        document.getElementById('test-debug').addEventListener('click', async () => {
+            const result = document.getElementById('result');
+            result.textContent = 'Testing debug route...';
+            
+            try {
+                const response = await fetch('/test-api');
+                if (!response.ok) {
+                    throw new Error(`API returned status ${response.status} ${response.statusText}`);
+                }
+                const data = await response.json();
+                result.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                result.textContent = `Error: ${error.message}`;
+            }
+        });
+        
+        document.getElementById('test-curl').addEventListener('click', async () => {
+            const result = document.getElementById('result');
+            result.textContent = 'Here is the curl command to test the API manually:\n\n';
+            result.textContent += 'curl http://localhost:11434/api/tags\n\n';
+            result.textContent += 'Run this in your terminal to check if Ollama is responding correctly.';
+        });
+    </script>
+</body>
+</html>

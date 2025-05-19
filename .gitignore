@@ -1,0 +1,38 @@
+# Node.js dependencies
+node_modules/
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Runtime data
+uploads/
+
+# Temporary files
+.DS_Store
+.temp
+.tmp
+*.swp
+*.swo
+
+# Large model files - exclude the actual model binaries as they're too large for GitHub
+ollama_models/*.gguf
+ollama_models/blobs/
+*.bin
+*.pt
+
+# VS Code settings
+.vscode/
+
+# Build outputs
+dist/
+build/
+
+config/.ollama/models
+

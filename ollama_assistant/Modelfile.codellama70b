@@ -1,0 +1,7 @@
+FROM codellama:70b-instruct
+
+# Optimized parameters for RTX 4080
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+PARAMETER num_ctx 8192
+PARAMETER num_thread 16

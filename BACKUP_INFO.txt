@@ -1,0 +1,22 @@
+Ollama Assistant Backup
+=======================
+Created: Mon May 19 17:13:28 EDT 2025
+Source System: DESKTOP-9QHNUQ9
+
+Backup Contents:
+- Ollama models from /mnt/e/ollama/models
+- Ollama Assistant web UI from ~/ollama-assistant
+- Ollama configuration from ~/.ollama
+- Logs from ~/ollama-assistant/logs
+- Startup scripts
+
+System Information:
+- WSL Distribution: Ubuntu 24.04.2 LTS
+- Node.js Version: v18.19.1
+- Ollama Version: ollama version is 0.7.0
+
+Restore Instructions:
+1. Copy the ollama_models directory to E:/ollama/models/
+2. Copy the ollama_assistant directory to ~/ollama-assistant/
+3. Copy the .ollama directory to ~/.ollama/
+4. Make any startup scripts executable with: chmod +x ~/start_ollama*.sh

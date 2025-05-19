@@ -1,0 +1,266 @@
+import express from 'express';
+import cors from 'cors';
+import bodyParser from 'body-parser';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+import fetch from 'node-fetch';
+import dotenv from 'dotenv';
+import multer from 'multer';
+import { createReadStream } from 'fs';
+
+// Load environment variables
+dotenv.config();
+
+// ES module equivalents of __dirname and __filename
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
+
+// Create logs directory if it doesn't exist
+const logsDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+}
+
+// Configure file upload
+const upload = multer({
+    dest: path.join(__dirname, 'uploads'),
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Enable CORS
+app.use(cors());
+
+// Parse JSON bodies
+app.use(bodyParser.json());
+
+// Log all requests
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    next();
+});
+
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public')));
+
+// File upload route
+app.post('/api/upload', upload.single('file'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
+    
+    console.log(`File uploaded: ${req.file.originalname}`);
+    
+    // Return file info
+    res.json({
+        filename: req.file.originalname,
+        filepath: req.file.path,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+        id: req.file.filename // This is the unique ID multer assigns
+    });
+});
+
+// Get uploaded file by ID
+app.get('/api/files/:id', (req, res) => {
+    const filePath = path.join(uploadsDir, req.params.id);
+    
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'File not found' });
+    }
+    
+    // Create a readable stream and pipe to response
+    const fileStream = createReadStream(filePath);
+    fileStream.pipe(res);
+});
+
+// Get file content as text
+app.get('/api/files/:id/content', async (req, res) => {
+    const filePath = path.join(uploadsDir, req.params.id);
+    
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'File not found' });
+    }
+    
+    try {
+        const content = fs.readFileSync(filePath, 'utf8');
+        res.json({ content });
+    } catch (error) {
+        console.error("Error reading file:", error);
+        res.status(500).json({ error: 'Failed to read file content' });
+    }
+});
+
+// List all uploaded files
+app.get('/api/files', (req, res) => {
+    try {
+        const files = fs.readdirSync(uploadsDir)
+            .filter(file => fs.statSync(path.join(uploadsDir, file)).isFile())
+            .map(file => {
+                const stats = fs.statSync(path.join(uploadsDir, file));
+                return {
+                    id: file,
+                    size: stats.size,
+                    created: stats.ctime
+                };
+            });
+            
+        res.json({ files });
+    } catch (error) {
+        console.error("Error listing files:", error);
+        res.status(500).json({ error: 'Failed to list files' });
+    }
+});
+
+// Get models
+app.get('/api/tags', async (req, res) => {
+    try {
+        console.log(`Getting models from ${OLLAMA_URL}/api/tags`);
+        const response = await fetch(`${OLLAMA_URL}/api/tags`);
+        const data = await response.json();
+        console.log(`Found ${data.models?.length || 0} models`);
+        res.json(data);
+    } catch (error) {
+        console.error("Error getting models:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Direct API routes for testing
+app.get('/test-api', async (req, res) => {
+    try {
+        console.log(`Testing API connection to ${OLLAMA_URL}/api/tags`);
+        const response = await fetch(`${OLLAMA_URL}/api/tags`);
+        if (!response.ok) {
+            throw new Error(`API test returned: ${response.status} ${response.statusText}`);
+        }
+        const data = await response.json();
+        console.log(`Test API found ${data.models?.length || 0} models`);
+        res.json(data);
+    } catch (error) {
+        console.error("Test API error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get ngrok URL
+app.get('/get-ngrok-url', async (req, res) => {
+    try {
+        const logFile = path.join(logsDir, 'server.log');
+        if (fs.existsSync(logFile)) {
+            const logs = fs.readFileSync(logFile, 'utf8');
+            const match = logs.match(/Ollama Assistant accessible externally at: (https:\/\/[^\s]+)/);
+            if (match && match[1]) {
+                return res.json({ url: match[1] });
+            }
+        }
+        res.json({ url: null, message: 'No ngrok URL found in logs' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Simple proxy for generate with file handling
+app.post('/api/generate', async (req, res) => {
+    console.log(`Generate request for model: ${req.body.model}`);
+    
+    try {
+        let prompt = req.body.prompt;
+        
+        // If there's a file reference, append its content to the prompt
+        if (req.body.fileId) {
+            const filePath = path.join(uploadsDir, req.body.fileId);
+            if (fs.existsSync(filePath)) {
+                const fileContent = fs.readFileSync(filePath, 'utf8');
+                prompt = `${prompt}\n\nFile content:\n${fileContent}`;
+                console.log(`Appended file content to prompt, new length: ${prompt.length}`);
+            } else {
+                console.warn(`File not found: ${req.body.fileId}`);
+            }
+        }
+        
+        // Create a new payload with the possibly modified prompt
+        const payload = {
+            ...req.body,
+            prompt
+        };
+        
+        // Forward the request to Ollama
+        const ollama_response = await fetch(`${OLLAMA_URL}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!ollama_response.ok) {
+            console.error(`Ollama error: ${ollama_response.status} ${ollama_response.statusText}`);
+            return res.status(ollama_response.status).json({ 
+                error: `Ollama API error: ${ollama_response.statusText}` 
+            });
+        }
+        
+        // Set up response headers for streaming
+        res.setHeader('Content-Type', 'application/json');
+        
+        // Simple way: pipe the response
+        ollama_response.body.pipe(res);
+    } catch (error) {
+        console.error("Generate error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Fallback route for SPA
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Start the server
+const server = app.listen(PORT, async () => {
+    console.log(`⚡️ Server running at http://localhost:${PORT}`);
+    console.log(`📡 API target: ${OLLAMA_URL}`);
+    
+    // Let's try to start ngrok, but only if the module is available
+    try {
+        const ngrok = await import('ngrok').catch(() => null);
+        if (ngrok) {
+            const url = await ngrok.default.connect(PORT);
+            console.log(`🌐 Ollama Assistant accessible externally at: ${url}`);
+            
+            // Save URL to a log file for batch script to read
+            const logFile = path.join(logsDir, 'server.log');
+            fs.appendFileSync(logFile, `Ollama Assistant accessible externally at: ${url}\n`);
+        } else {
+            console.log("Ngrok module not available. Install with: npm install ngrok");
+            console.log("Using previous ngrok URL if available");
+            
+            // Try to read previous URL from logs
+            try {
+                const logFile = path.join(logsDir, 'server.log');
+                if (fs.existsSync(logFile)) {
+                    const logs = fs.readFileSync(logFile, 'utf8');
+                    const match = logs.match(/Ollama Assistant accessible externally at: (https:\/\/[^\s]+)/);
+                    if (match && match[1]) {
+                        console.log(`Previous external URL: ${match[1]}`);
+                        console.log("Note: This URL may no longer be active");
+                    }
+                }
+            } catch (err) {
+                console.log("Could not read logs for previous URL");
+            }
+        }
+    } catch (error) {
+        console.error('Error with ngrok:', error);
+        console.log('External access will not be available. Using local access only.');
+    }
+});
